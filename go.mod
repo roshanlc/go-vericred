@@ -1,4 +1,4 @@
-module github.com/roshanlc/go-grepsr
+module github.com/roshanlc/go-vericred
 
 go 1.21.4
 

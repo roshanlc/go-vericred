@@ -3,3 +3,4 @@ go-grepsr
 main
 *.go_backup
 *.txt
+go-vericred
