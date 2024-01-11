@@ -2,99 +2,158 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"strings"
 
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
-type model struct {
-	cursor   int
-	choices  []string
-	selected map[int]struct{}
+const listHeight = 14
+
+var (
+	titleStyle        = lipgloss.NewStyle().MarginLeft(2).Bold(true).Foreground(lipgloss.Color("192"))
+	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
+	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("9"))
+	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(2)
+	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+)
+
+type item string
+
+func (i item) FilterValue() string { return "" }
+
+type itemDelegate struct{}
+
+func (d itemDelegate) Height() int                             { return 1 }
+func (d itemDelegate) Spacing() int                            { return 0 }
+func (d itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(item)
+	if !ok {
+		return
+	}
+
+	str := fmt.Sprintf("%d. %s", index+1, i)
+
+	fn := itemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return selectedItemStyle.Render("> " + strings.Join(s, " "))
+		}
+	}
+
+	fmt.Fprint(w, fn(str))
 }
 
-// global var
-var exit bool = false
+// global var to store selected options
+var selected map[string]struct{}
 
-// selected checkboxes
-var selected map[int]struct{}
+var options = []list.Item{
+	item("Find unique zips"),
+	item("Find unique networks"),
+	item("Find unique specialties"),
+}
+
+type model struct {
+	list     list.Model
+	selected map[string]struct{}
+	quitting bool
+}
 
 func initialModel() model {
-	return model{
-		choices: []string{"Find unique zips", "Find unique networks", "Find unique specialties"},
 
-		// A map which indicates which choices are selected. We're using
-		// the map like a mathematical set. The keys refer to the indexes
-		// of the `choices` slice, above.
-		selected: make(map[int]struct{}),
+	items := options
+
+	const defaultWidth = 25
+
+	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
+	l.Title = "Select the options."
+	l.SetShowStatusBar(false)
+	l.SetFilteringEnabled(false)
+	l.Styles.Title = titleStyle
+	l.Styles.PaginationStyle = paginationStyle
+	return model{
+		list:     l,
+		selected: make(map[string]struct{}),
+		quitting: false,
 	}
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.SetWindowTitle("Grocery List")
+	return tea.SetWindowTitle("Vericred Helper")
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.list.SetWidth(msg.Width)
+		return m, nil
+
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			exit = true
+		switch keypress := msg.String(); keypress {
+		case "ctrl+c":
+			m.quitting = true
 			return m, tea.Quit
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case "down", "j":
-			if m.cursor < len(m.choices)-1 {
-				m.cursor++
-			}
+
 		case "enter", " ":
-			_, ok := m.selected[m.cursor]
+
+			i, ok := m.list.SelectedItem().(item)
 			if ok {
-				delete(m.selected, m.cursor)
-			} else {
-				m.selected[m.cursor] = struct{}{}
+				val := string(i)
+				val = strings.ReplaceAll(val, "[x]", " ")
+				val = strings.Trim(val, " ")
+
+				_, exists := m.selected[val]
+				if exists {
+					delete(m.selected, val)
+				} else {
+					m.selected[val] = struct{}{}
+				}
+
 			}
 
 		case "p", "P":
-			tea.Printf("Hello jssjbs\n")
 			if len(m.selected) > 0 {
 				selected = m.selected
 				return m, tea.Quit
 			}
-		}
 
+		}
 	}
 
-	return m, nil
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
 }
 
 func (m model) View() string {
-	s := "What should we buy at the market?\n\n"
+	s := "\n\n"
 
-	for i, choice := range m.choices {
-		cursor := " "
-		if m.cursor == i {
-			cursor = ">"
+	for i, val := range m.list.Items() {
+		x, _ := val.(item)
+		temp := string(x)
+		temp = strings.ReplaceAll(temp, "[x]", " ")
+		temp = strings.Trim(temp, " ")
+
+		_, ok := m.selected[temp]
+		if ok {
+			m.list.SetItem(i, list.Item(item("[x] "+temp)))
+		} else {
+			m.list.SetItem(i, list.Item(item(temp)))
+
 		}
-
-		checked := " "
-		if _, ok := m.selected[i]; ok {
-			checked = "x"
-		}
-
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
 	}
 
-	s += "\nPress p or P to proceed.\n"
-	s += "\nPress q to quit.\n"
-
-	return s
+	return s + m.list.View() + "\n\nPress p or P to proceed"
 }
 
 func main() {
+
 	// the first arguement is the filename
 	filename := os.Args[1]
 
@@ -106,17 +165,15 @@ func main() {
 		log.Fatal(err)
 	}
 
+	helpStyle.SetString("P - to proceed with the selections\n")
+
 	initModel := initialModel()
 
 	p := tea.NewProgram(initModel, tea.WithOutput(os.Stdin))
+
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
-	}
-
-	// check if exit was called for
-	if exit {
-		return
 	}
 
 	// buffered channel, only 3 max inputs is possible
@@ -126,11 +183,11 @@ func main() {
 	// the selected choices
 	for i, _ := range selected {
 		switch i {
-		case 0:
+		case "Find unique zips":
 			go searchUniqueZips(filename, values)
-		case 1:
+		case "Find unique networks":
 			go searchUniqueNetworks(filename, values)
-		case 2:
+		case "Find unique specialties":
 			go searchUniqueSpecialties(filename, values)
 		}
 	}
@@ -143,7 +200,6 @@ func main() {
 }
 
 func checkIfFileExists(filename string) (bool, error) {
-
 	file, err := os.Open(filename)
 
 	if err != nil {

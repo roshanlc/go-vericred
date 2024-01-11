@@ -1,3 +1,4 @@
 go-grepsr
 demo.json
 main
+*.go_backup
