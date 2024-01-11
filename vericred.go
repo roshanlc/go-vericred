@@ -6,7 +6,7 @@ import (
 )
 
 func searchUniqueZips(fileName string, data chan string) {
-	cmd := "rg -o '\"zip\": \"\\d{5}\"' " + fileName + " | parsort -u | wc -l"
+	cmd := "rg -o '\"zip\": \"\\d{5}\"' " + fileName + " | parsort -u | tee unique_zips.txt | wc -l"
 	zips := exec.Command("bash", "-c", cmd)
 
 	output, err := zips.Output()
@@ -16,7 +16,7 @@ func searchUniqueZips(fileName string, data chan string) {
 	}
 	msg := strings.Repeat("-", 50)
 
-	msg += "\nTotal unique zips found: " + string(output) + "The unique zips are saved in unique_zips.txt (To be implemented).\n"
+	msg += "\nTotal unique zips found: " + string(output) + "The unique zips are saved in unique_zips.txt.\n"
 
 	msg += strings.Repeat("-", 50)
 
@@ -25,7 +25,7 @@ func searchUniqueZips(fileName string, data chan string) {
 
 func searchUniqueNetworks(fileName string, data chan string) {
 	// cmd := "rg -o '\"networks\": \\[\\{\"name\": \".+\", \"tier\": \".*\"\\}\\],' " + fileName + " | parsort -u"
-	cmd := "jq '.networks[].name' " + fileName + " | parsort -u"
+	cmd := "jq '.networks[].name' " + fileName + " | parsort -u | tee unique_networks.txt | wc -l"
 	zips := exec.Command("bash", "-c", cmd)
 
 	output, err := zips.Output()
@@ -35,8 +35,7 @@ func searchUniqueNetworks(fileName string, data chan string) {
 	}
 	msg := strings.Repeat("-", 50)
 
-	msg += "\nThe unique networks are:\n\n"
-	msg += string(output)
+	msg += "\nThe total unique networks found : " + string(output) + "The unique networks are saved in unique_networks.txt\n"
 
 	msg += "\n" + strings.Repeat("-", 50)
 
@@ -44,7 +43,7 @@ func searchUniqueNetworks(fileName string, data chan string) {
 }
 
 func searchUniqueSpecialties(fileName string, data chan string) {
-	cmd := "jq '.specialties[].name' " + fileName + " | parsort -u "
+	cmd := "jq '.specialties[].name' " + fileName + " | parsort -u | tee unique_specs.txt | wc -l"
 	zips := exec.Command("bash", "-c", cmd)
 
 	output, err := zips.Output()
@@ -54,8 +53,7 @@ func searchUniqueSpecialties(fileName string, data chan string) {
 	}
 	msg := strings.Repeat("-", 50)
 
-	msg += "\nThe unique specialties are:\n\n"
-	msg += string(output)
+	msg += "\nThe total unique specialties found : " + string(output) + "The unique specialties are saved in unique_specs.txt\n"
 
 	msg += "\n" + strings.Repeat("-", 50)
 

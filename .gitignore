@@ -1,4 +1,5 @@
 go-grepsr
-demo.json
+*.json
 main
 *.go_backup
+*.txt

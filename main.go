@@ -183,12 +183,12 @@ func main() {
 	// the selected choices
 	for i, _ := range selected {
 		switch i {
-		case "Find unique zips":
-			go searchUniqueZips(filename, values)
-		case "Find unique networks":
-			go searchUniqueNetworks(filename, values)
 		case "Find unique specialties":
 			go searchUniqueSpecialties(filename, values)
+		case "Find unique networks":
+			go searchUniqueNetworks(filename, values)
+		case "Find unique zips":
+			go searchUniqueZips(filename, values)
 		}
 	}
 
