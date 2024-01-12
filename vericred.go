@@ -6,7 +6,7 @@ import (
 )
 
 func searchUniqueZips(fileName string, data chan string) {
-	cmd := "rg -o '\"zip\": \"\\d{5}\"' " + fileName + " | parsort -u | tee unique_zips.txt | wc -l"
+	cmd := "rg -o '\"zip\": \"\\d{5}\"' " + fileName + " | parsort | uniq -c | tee unique_zips.txt | wc -l"
 	zips := exec.Command("bash", "-c", cmd)
 
 	output, err := zips.Output()
@@ -25,7 +25,7 @@ func searchUniqueZips(fileName string, data chan string) {
 
 func searchUniqueNetworks(fileName string, data chan string) {
 	// cmd := "rg -o '\"networks\": \\[\\{\"name\": \".+\", \"tier\": \".*\"\\}\\],' " + fileName + " | parsort -u"
-	cmd := "jq -r '.networks[].name' " + fileName + " | parsort -u | tee unique_networks.txt | wc -l"
+	cmd := "jq -r '.networks[].name' " + fileName + " | parsort | uniq -c | tee unique_networks.txt | wc -l"
 	zips := exec.Command("bash", "-c", cmd)
 
 	output, err := zips.Output()
@@ -43,7 +43,7 @@ func searchUniqueNetworks(fileName string, data chan string) {
 }
 
 func searchUniqueSpecialties(fileName string, data chan string) {
-	cmd := "jq -r '.specialties[].name' " + fileName + " | parsort -u | tee unique_specs.txt | wc -l"
+	cmd := "jq -r '.specialties[].name' " + fileName + " | parsort | uniq -c | tee unique_specs.txt | wc -l"
 	zips := exec.Command("bash", "-c", cmd)
 
 	output, err := zips.Output()
